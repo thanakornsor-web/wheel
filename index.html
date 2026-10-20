@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>วงล้อสุ่ม (ขนาดเท่ากัน แต่ความน่าจะเป็นต่างกัน)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            background: #fff;
+        }
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #e74c3c;
+            z-index: 10;
+        }
+        button {
+            margin-top: 25px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3498db;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #27ae60;
+            min-height: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="400" height="400"></canvas>
+        <button id="spinBtn" onclick="spinWheel()">หมุนวงล้อ!</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        // ==========================================
+        // ตั้งค่าตัวเลือกและน้ำหนัก (ความน่าจะเป็น) ที่นี่
+        // weight ยิ่งเยอะ ยิ่งมีโอกาสออกบ่อย แต่ขนาดช่องบนวงล้อจะเท่ากันหมด
+        // ==========================================
+        const items = [
+            { name: "รางวัล A", weight: 5 }, // โอกาสออกเยอะสุด
+            { name: "รางวัล B", weight: 3 },
+            { name: "รางวัล C", weight: 1 }, // โอกาสออกน้อยสุด
+            { name: "รางวัล D", weight: 1 }
+        ];
+
+        const colors = ["#f1c40f", "#e67e22", "#e74c3c", "#9b59b6", "#3498db", "#1abc9c", "#2ecc71"];
+
+        // สร้างอาเรย์สำหรับวงล้อ (ขยายตามน้ำหนัก เพื่อให้ขนาดช่องบนวงล้อเท่ากันเป๊ะ แต่โอกาสออกตามน้ำหนัก)
+        let wheelSlices = [];
+        items.forEach(item => {
+            for (let i = 0; i < item.weight; i++) {
+                wheelSlices.push(item.name);
+            }
+        });
+
+        // สลับตำแหน่งในอาเรย์เพื่อให้หน้าตากระจายตัวสวยงาม
+        wheelSlices.sort(() => Math.random() - 0.5);
+
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const numSlices = wheelSlices.length;
+        const arcSize = (2 * Math.PI) / numSlices;
+        
+        let startAngle = 0;
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const center = canvas.width / 2;
+            const radius = center - 10;
+
+            for (let i = 0; i < numSlices; i++) {
+                const angle = startAngle + i * arcSize;
+                
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(center, center);
+                ctx.arc(center, center, radius, angle, angle + arcSize);
+                ctx.lineTo(center, center);
+                ctx.fill();
+                ctx.stroke();
+
+                // วาดข้อความชื่อ
+                ctx.save();
+                ctx.translate(center, center);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 14px sans-serif";
+                ctx.fillText(wheelSlices[i], radius - 20, 5);
+                ctx.restore();
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = false; // จะถูกเปลี่ยนเป็น true ตอนเริ่ม
+            document.getElementById("spinBtn").disabled = true;
+            document.getElementById("result").innerText = "";
+
+            // สุ่มองศาที่จะหมุน (หมุนหลายๆ รอบ + มุมสุ่ม)
+            const minSpins = 5;
+            const maxSpins = 8;
+            const spins = Math.floor(Math.random() * (maxSpins - minSpins + 1)) + minSpins;
+            const randomAngle = Math.random() * 2 * Math.PI;
+            const totalRotation = spins * 2 * Math.PI + randomAngle;
+
+            let startTime = null;
+            const duration = 4000; // เวลาหมุน 4 วินาที
+
+            function animateSpin(currentTime) {
+                if (!startTime) startTime = currentTime;
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // ฟังก์ชันความเร่ง/หน่วง (Ease Out Cubic)
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                
+                startAngle = currentAngle + totalRotation * easeOut;
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    currentAngle = startAngle % (2 * Math.PI);
+                    isSpinning = false;
+                    document.getElementById("spinBtn").disabled = false;
+
+                    // คำนวณหาว่าชิ้นไหนอยู่บนสุด (ตำแหน่งเข็มชี้อยู่ที่ -PI/2 หรือด้านบนสุด)
+                    const pointerAngle = (3 * Math.PI / 2 - currentAngle) % (2 * Math.PI);
+                    const normalizedPointerAngle = (pointerAngle + 2 * Math.PI) % (2 * Math.PI);
+                    const winningIndex = Math.floor(normalizedPointerAngle / arcSize);
+                    
+                    const winner = wheelSlices[winningIndex];
+                    document.getElementById("result").innerText = `🎉 ผลลัพธ์: ${winner} 🎉`;
+                }
+            }
+
+            isSpinning = true;
+            requestAnimationFrame(animateSpin);
+        }
+
+        // วาดวงล้อครั้งแรกตอนโหลดหน้าเว็บ
+        drawWheel();
+    </script>
+
+</body>
+</html>
